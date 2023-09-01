@@ -7,6 +7,7 @@ const Photo = require('./db/Photo');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 // const upload = multer({dest:'uploads/'})
 
@@ -52,48 +53,90 @@ app.post('/login', async (req,resp)=>{
     }
 })
 
-app.post('/addPhoto', upload.single("image"), async(req,resp)=>{
-const saveImage = new Photo({
-    title:req.body.title,
-    location:req.body.location,
-    img:{
-        data: fs.readFileSync(path.join('uploads', req.file.filename)),
+app.post('/addPhoto', upload.single('image'), async (req, resp) => {
+  try {
+    const outputImagePath = path.join('uploads', 'output.jpg'); // Correct the output image path
 
-        contentType:"image/png"
-    },
-});
-saveImage.save()
-.then(savedPhoto => {
+    // Resize and process the uploaded image using sharp
+    await sharp(req.file.path)
+      .resize(800, 600) // Resize to 800x600
+      .toFile(outputImagePath);
+
+    const saveImage = new Photo({
+      title: req.body.title,
+      location: req.body.location,
+      img: {
+        data: fs.readFileSync(outputImagePath),
+        contentType: 'image/jpeg', // Adjust the content type if necessary
+      },
+    });
+
+    // Save the photo in the database
+    const savedPhoto = await saveImage.save();
+
     console.log('Photo saved:', savedPhoto);
     resp.status(200).json(savedPhoto); // Respond with the saved photo
-  })
-  .catch(error => {
+  } catch (error) {
     console.error('Error saving photo:', error);
     resp.status(500).json({ error: 'Error saving photo' }); // Respond with an error status
-  });
-
-    // try {
-    //     const newPhoto = new Photo({
-    //       title: req.body.title,
-    //       location: req.body.location,
-    //       imageUrl: req.file.filename, 
-    //     });
-    
-    //     newPhoto.save()
-    //       .then(savedPhoto => {
-    //         console.log('Photo saved:', savedPhoto);
-    //         resp.status(200).json(savedPhoto); // Respond with the saved photo
-    //       })
-    //       .catch(error => {
-    //         console.error('Error saving photo:', error);
-    //         resp.status(500).json({ error: 'Error saving photo' }); // Respond with an error status
-    //       });
-    //   } catch (error) {
-    //     console.error('Error processing request:', error);
-    //     resp.status(500).json({ error: 'Error processing request' }); // Respond with an error status
-    //   }
-    
+  }
 });
+
+// app.post('/addPhoto', upload.single("image"), async(req,resp)=>{
+
+//   const outputImagePath = 'output.jpg';
+
+//   // Resize and process the image using sharp
+//   sharp(req.file.filename)
+//     .resize(800, 600) // Resize to 800x600
+//     .toFile(outputImagePath, (err, info) => {
+//       if (err) {
+//         console.error('Error processing image:', err);
+//       } else {
+//         console.log('Image processed successfully:', info);
+//       }
+//   });
+// const saveImage = new Photo({
+//     title:req.body.title,
+//     location:req.body.location,
+//     img:{
+//         data: fs.readFileSync(path.join('uploads', outputImagePath)),
+
+//         contentType:"image/png"
+//     },
+// });
+// saveImage.save()
+// .then(savedPhoto => {
+//     console.log('Photo saved:', savedPhoto);
+//     resp.status(200).json(savedPhoto); // Respond with the saved photo
+//   })
+//   .catch(error => {
+//     console.error('Error saving photo:', error);
+//     resp.status(500).json({ error: 'Error saving photo' }); // Respond with an error status
+//   });
+
+//     // try {
+//     //     const newPhoto = new Photo({
+//     //       title: req.body.title,
+//     //       location: req.body.location,
+//     //       imageUrl: req.file.filename, 
+//     //     });
+    
+//     //     newPhoto.save()
+//     //       .then(savedPhoto => {
+//     //         console.log('Photo saved:', savedPhoto);
+//     //         resp.status(200).json(savedPhoto); // Respond with the saved photo
+//     //       })
+//     //       .catch(error => {
+//     //         console.error('Error saving photo:', error);
+//     //         resp.status(500).json({ error: 'Error saving photo' }); // Respond with an error status
+//     //       });
+//     //   } catch (error) {
+//     //     console.error('Error processing request:', error);
+//     //     resp.status(500).json({ error: 'Error processing request' }); // Respond with an error status
+//     //   }
+    
+// });
 
 
 app.get('/getPhotos',async (req,resp)=>{
